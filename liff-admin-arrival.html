@@ -2,116 +2,125 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>管理員｜到貨點貨</title>
+  <title>到貨點貨</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body {
-      font-family: system-ui, -apple-system;
-      background: #f6f6f6;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #f7f7f7;
+      margin: 0;
       padding: 12px;
     }
     h2 {
-      margin-bottom: 10px;
+      margin: 8px 0 12px;
     }
-    .card {
+    .item {
       background: #fff;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 12px;
-      margin-bottom: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
     }
     .row {
+      display: flex;
+      justify-content: space-between;
+      margin: 4px 0;
       font-size: 14px;
-      margin-bottom: 6px;
     }
-    input {
-      width: 100%;
-      padding: 6px;
-      font-size: 15px;
-      margin-top: 6px;
+    .row strong {
+      font-weight: 600;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 4px;
+    }
+    .footer {
+      margin-top: 16px;
     }
     button {
       width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      font-size: 15px;
-      border-radius: 6px;
-      border: none;
-    }
-    .confirm {
+      padding: 12px;
+      font-size: 16px;
       background: #06c755;
       color: #fff;
-    }
-    .clear {
-      background: #ff3b30;
-      color: #fff;
+      border: none;
+      border-radius: 8px;
     }
   </style>
 </head>
-
 <body>
-  <h2>📦 到貨點貨（管理員）</h2>
-  <div id="list"></div>
+
+<h2>📦 到貨點貨</h2>
+<div id="list">載入中…</div>
+
+<div class="footer">
+  <button onclick="submitArrival()">✔️ 確認已勾選到貨</button>
+</div>
 
 <script>
-async function initLIFF() {
-  await liff.init({ liffId: "2008857998-ePcCkr6K" });
-  if (!liff.isLoggedIn()) liff.login();
+const API_BASE = '';
+
+let arrivalData = [];
+
+async function init() {
+  await liff.init({ liffId: '2008857998-ePcCkr6K' });
   loadArrivalList();
 }
 
 async function loadArrivalList() {
-  const res = await fetch("/api/admin/arrival/list");
-  const data = await res.json();
-  const container = document.getElementById("list");
-  container.innerHTML = "";
+  const res = await fetch('/api/admin/arrival');
+  arrivalData = await res.json();
 
-  data.forEach(item => {
-    const div = document.createElement("div");
-    div.className = "card";
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+
+  arrivalData.forEach((item, index) => {
+    const div = document.createElement('div');
+    div.className = 'item';
     div.innerHTML = `
-      <div class="row"><b>${item.productName}</b></div>
-      <div class="row">顏色：${item.color}</div>
-      <div class="row">尺寸：${item.size}</div>
+      <div class="row">
+        <strong>
+          <input type="checkbox" id="chk_${index}">
+          ${item.productName}
+        </strong>
+      </div>
+      <div class="row">顏色 / 尺寸：${item.color} / ${item.size}</div>
       <div class="row">訂購總數：${item.totalQty}</div>
-      <input type="number" placeholder="實際到貨數量" id="arrived-${item.id}" />
-      <button class="confirm" onclick="confirmArrival('${item.id}')">✅ 確認到貨</button>
+      <div class="row">
+        實際到貨數：
+        <input type="number" min="0" id="qty_${index}" value="${item.totalQty}">
+      </div>
     `;
-    container.appendChild(div);
+    list.appendChild(div);
   });
+}
 
-  if (data.length > 0) {
-    const clearBtn = document.createElement("button");
-    clearBtn.className = "clear";
-    clearBtn.innerText = "🧹 一鍵清除已到貨商品";
-    clearBtn.onclick = clearArrived;
-    container.appendChild(clearBtn);
+async function submitArrival() {
+  const payload = arrivalData.map((item, index) => ({
+    productCode: item.productCode,
+    color: item.color,
+    size: item.size,
+    arrived: document.getElementById(`chk_${index}`).checked,
+    arrivedQty: Number(document.getElementById(`qty_${index}`).value || 0)
+  })).filter(i => i.arrived);
+
+  if (payload.length === 0) {
+    alert('請至少勾選一項已到貨商品');
+    return;
   }
-}
 
-async function confirmArrival(id) {
-  const qty = document.getElementById(`arrived-${id}`).value;
-  if (!qty) return alert("請輸入到貨數量");
-
-  await fetch("/api/admin/arrival/confirm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, arrivedQty: Number(qty) })
+  await fetch('/api/admin/arrival', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
 
-  alert("✅ 已記錄到貨");
+  alert('已更新到貨狀態');
   loadArrivalList();
 }
 
-async function clearArrived() {
-  if (!confirm("確定清除所有已到貨項目？")) return;
-  await fetch("/api/admin/arrival/clear", { method: "POST" });
-  alert("🧹 已清除");
-  loadArrivalList();
-}
-
-initLIFF();
+init();
 </script>
 </body>
 </html>
