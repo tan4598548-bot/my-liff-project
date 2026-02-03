@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>商品上架</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    body {
+      font-family: system-ui;
+      background: #f2f2f2;
+      padding: 16px;
+    }
+    h2 { text-align: center; }
+
+    .card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #06c755;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>🧺 商品上架</h2>
+
+  <div class="card">
+    <label>商品名稱</label>
+    <input id="name" placeholder="例：維尼熊連帽外套" />
+
+    <label>價格</label>
+    <input id="price" type="number" placeholder="例：590" />
+
+    <label>結單日</label>
+    <input id="closeDate" type="date" />
+
+    <label>尺寸（用 / 分隔）</label>
+    <input id="sizes" placeholder="S/M/L/XL/2L/3L/均碼" />
+
+    <label>顏色（用 / 分隔）</label>
+    <input id="colors" placeholder="紅/黃/藍/小熊/天空/維尼" />
+
+    <button onclick="submitProduct()">✅ 上架商品</button>
+  </div>
+
+<script>
+async function init() {
+  await liff.init({ liffId: "2008857998-AoqmEajq" });
+  if (!liff.isLoggedIn()) liff.login();
+}
+
+async function submitProduct() {
+  const body = {
+    name: name.value.trim(),
+    price: Number(price.value),
+    closeDate: closeDate.value,
+    sizes: sizes.value.split("/"),
+    colors: colors.value.split("/")
+  };
+
+  if (!body.name || !body.price || !body.closeDate) {
+    alert("請填完整資料");
+    return;
+  }
+
+  const res = await fetch("/api/admin/products/create", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    alert("商品已上架");
+    location.reload();
+  } else {
+    alert("上架失敗");
+  }
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>管理員｜到貨點貨</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system;
+      background: #f6f6f6;
+      padding: 12px;
+    }
+    h2 {
+      margin-bottom: 10px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    }
+    .row {
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    input {
+      width: 100%;
+      padding: 6px;
+      font-size: 15px;
+      margin-top: 6px;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      border: none;
+    }
+    .confirm {
+      background: #06c755;
+      color: #fff;
+    }
+    .clear {
+      background: #ff3b30;
+      color: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>📦 到貨點貨（管理員）</h2>
+  <div id="list"></div>
+
+<script>
+async function initLIFF() {
+  await liff.init({ liffId: "2008857998-ePcCkr6K" });
+  if (!liff.isLoggedIn()) liff.login();
+  loadArrivalList();
+}
+
+async function loadArrivalList() {
+  const res = await fetch("/api/admin/arrival/list");
+  const data = await res.json();
+  const container = document.getElementById("list");
+  container.innerHTML = "";
+
+  data.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "card";
+    div.innerHTML = `
+      <div class="row"><b>${item.productName}</b></div>
+      <div class="row">顏色：${item.color}</div>
+      <div class="row">尺寸：${item.size}</div>
+      <div class="row">訂購總數：${item.totalQty}</div>
+      <input type="number" placeholder="實際到貨數量" id="arrived-${item.id}" />
+      <button class="confirm" onclick="confirmArrival('${item.id}')">✅ 確認到貨</button>
+    `;
+    container.appendChild(div);
+  });
+
+  if (data.length > 0) {
+    const clearBtn = document.createElement("button");
+    clearBtn.className = "clear";
+    clearBtn.innerText = "🧹 一鍵清除已到貨商品";
+    clearBtn.onclick = clearArrived;
+    container.appendChild(clearBtn);
+  }
+}
+
+async function confirmArrival(id) {
+  const qty = document.getElementById(`arrived-${id}`).value;
+  if (!qty) return alert("請輸入到貨數量");
+
+  await fetch("/api/admin/arrival/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id, arrivedQty: Number(qty) })
+  });
+
+  alert("✅ 已記錄到貨");
+  loadArrivalList();
+}
+
+async function clearArrived() {
+  if (!confirm("確定清除所有已到貨項目？")) return;
+  await fetch("/api/admin/arrival/clear", { method: "POST" });
+  alert("🧹 已清除");
+  loadArrivalList();
+}
+
+initLIFF();
+</script>
+</body>
+</html>
