@@ -2,72 +2,73 @@
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8" />
-  <title>管理員｜發貨列印</title>
+  <title>發貨列印</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
     body {
       font-family: system-ui;
-      background: #f6f6f6;
+      background: #f5f5f5;
       padding: 12px;
     }
     h2 {
-      margin-bottom: 10px;
-    }
-    .card {
-      background: #fff;
-      border-radius: 10px;
-      padding: 12px;
       margin-bottom: 12px;
-      box-shadow: 0 2px 6px rgba(0,0,0,.08);
+    }
+    .buyer {
+      background: #fff;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
     }
     button {
       width: 100%;
-      padding: 10px;
-      font-size: 15px;
-      border-radius: 6px;
-      border: none;
-      background: #007aff;
+      padding: 14px;
+      font-size: 16px;
+      background: #ff8c00;
       color: #fff;
-      margin-top: 8px;
+      border: none;
+      border-radius: 8px;
     }
   </style>
 </head>
-
 <body>
-  <h2>🚚 發貨 PDF 列印</h2>
-  <div id="buyers"></div>
+
+<h2>🧾 發貨 PDF 列印</h2>
+
+<div id="buyers">載入中…</div>
+
+<button onclick="generatePDF()">📄 產生發貨 PDF</button>
 
 <script>
-async function initLIFF() {
-  await liff.init({ liffId: "2008857998-HUEXLkgO" });
-  if (!liff.isLoggedIn()) liff.login();
-  loadShippingList();
+async function init() {
+  await liff.init({ liffId: '2008857998-HUEXLkgO' });
+  loadBuyers();
 }
 
-async function loadShippingList() {
-  const res = await fetch("/api/admin/shipping/list");
+async function loadBuyers() {
+  const res = await fetch('/api/admin/shipping/preview');
   const data = await res.json();
-  const box = document.getElementById("buyers");
-  box.innerHTML = "";
 
-  data.forEach(buyer => {
-    const div = document.createElement("div");
-    div.className = "card";
+  const box = document.getElementById('buyers');
+  box.innerHTML = '';
+
+  data.forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'buyer';
     div.innerHTML = `
-      <div><b>${buyer.name}</b></div>
-      <div>LINE ID：${buyer.lineId}</div>
-      <button onclick="printPdf('${buyer.lineId}')">📄 列印發貨單</button>
+      <strong>${b.buyerName}</strong><br>
+      ${b.items.length} 項商品
     `;
     box.appendChild(div);
   });
 }
 
-function printPdf(lineId) {
-  window.open(`/api/admin/shipping/pdf?lineId=${lineId}`, "_blank");
+async function generatePDF() {
+  window.open('/api/admin/shipping/pdf', '_blank');
 }
 
-initLIFF();
+init();
 </script>
 </body>
 </html>
