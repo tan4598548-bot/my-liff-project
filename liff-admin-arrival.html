@@ -6,118 +6,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-      background: #f7f7f7;
-      margin: 0;
-      padding: 12px;
-    }
-    h2 {
-      margin: 8px 0 12px;
-    }
-    .item {
-      background: #fff;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 10px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-    }
-    .row {
-      display: flex;
-      justify-content: space-between;
-      margin: 4px 0;
-      font-size: 14px;
-    }
-    .row strong {
-      font-weight: 600;
-    }
-    input[type="number"] {
-      width: 80px;
-      padding: 4px;
-    }
-    .footer {
-      margin-top: 16px;
-    }
-    button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      background: #06c755;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-    }
+    body { font-family: sans-serif; padding: 12px; }
+    .item { border-bottom: 1px solid #ddd; padding: 8px 0; }
+    input[type=number] { width: 60px; }
+    button { margin-top: 12px; padding: 10px; width: 100%; }
   </style>
 </head>
 <body>
+  <h2>📦 到貨點貨</h2>
+  <div id="list"></div>
 
-<h2>📦 到貨點貨</h2>
-<div id="list">載入中…</div>
-
-<div class="footer">
-  <button onclick="submitArrival()">✔️ 確認已勾選到貨</button>
-</div>
+  <button onclick="submitArrival()">✅ 確認到貨</button>
+  <button onclick="clearArrived()">🧹 一鍵清除已到貨</button>
 
 <script>
-const API_BASE = '';
-
-let arrivalData = [];
+let userId = "";
+let items = [];
 
 async function init() {
-  await liff.init({ liffId: '2008857998-ePcCkr6K' });
-  loadArrivalList();
-}
-
-async function loadArrivalList() {
-  const res = await fetch('/api/admin/arrival');
-  arrivalData = await res.json();
-
-  const list = document.getElementById('list');
-  list.innerHTML = '';
-
-  arrivalData.forEach((item, index) => {
-    const div = document.createElement('div');
-    div.className = 'item';
-    div.innerHTML = `
-      <div class="row">
-        <strong>
-          <input type="checkbox" id="chk_${index}">
-          ${item.productName}
-        </strong>
-      </div>
-      <div class="row">顏色 / 尺寸：${item.color} / ${item.size}</div>
-      <div class="row">訂購總數：${item.totalQty}</div>
-      <div class="row">
-        實際到貨數：
-        <input type="number" min="0" id="qty_${index}" value="${item.totalQty}">
-      </div>
-    `;
-    list.appendChild(div);
-  });
-}
-
-async function submitArrival() {
-  const payload = arrivalData.map((item, index) => ({
-    productCode: item.productCode,
-    color: item.color,
-    size: item.size,
-    arrived: document.getElementById(`chk_${index}`).checked,
-    arrivedQty: Number(document.getElementById(`qty_${index}`).value || 0)
-  })).filter(i => i.arrived);
-
-  if (payload.length === 0) {
-    alert('請至少勾選一項已到貨商品');
+  await liff.init({ liffId: "2008857998-ePcCkr6K" });
+  if (!liff.isLoggedIn()) {
+    liff.login();
     return;
   }
 
-  await fetch('/api/admin/arrival', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
+  const profile = await liff.getProfile();
+  userId = profile.userId;
+
+  const res = await fetch(`/api/admin/arrival-list?userId=${userId}`);
+  if (!res.ok) {
+    alert("非管理員");
+    liff.closeWindow();
+    return;
+  }
+
+  items = await res.json();
+  render();
+}
+
+function render() {
+  const el = document.getElementById("list");
+  el.innerHTML = items.map((i, idx) => `
+    <div class="item">
+      <label>
+        <input type="checkbox" data-idx="${idx}">
+        ${i.productName} / ${i.color} / ${i.size}
+        （訂購 ${i.totalQty}）
+      </label>
+      實到：
+      <input type="number" min="0" value="${i.totalQty}" data-qty="${idx}">
+    </div>
+  `).join("");
+}
+
+async function submitArrival() {
+  const selected = [];
+  document.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    if (cb.checked) {
+      const idx = cb.dataset.idx;
+      const qty = document.querySelector(`input[data-qty="${idx}"]`).value;
+      selected.push({ ...items[idx], arrivedQty: Number(qty) });
+    }
   });
 
-  alert('已更新到貨狀態');
-  loadArrivalList();
+  if (!selected.length) {
+    alert("請勾選項目");
+    return;
+  }
+
+  await fetch("/api/admin/confirm", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, items: selected })
+  });
+
+  alert("到貨完成");
+  location.reload();
+}
+
+async function clearArrived() {
+  if (!confirm("確定清除已到貨項目？")) return;
+
+  await fetch("/api/admin/clear", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId })
+  });
+
+  alert("已清除");
+  location.reload();
 }
 
 init();
