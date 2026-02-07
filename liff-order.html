@@ -1,115 +1,71 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-  <meta charset="UTF-8" />
-  <title>團購下單</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
-  <style>
-    body {
-      font-family: system-ui;
-      background: #f6f6f6;
-      padding: 12px;
-    }
-    .card {
-      background: #fff;
-      padding: 14px;
-      border-radius: 12px;
-      margin-bottom: 14px;
-    }
-    select, input {
-      width: 100%;
-      margin-top: 6px;
-      padding: 8px;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      background: #06c755;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>商品下單</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+body { font-family: sans-serif; padding: 12px; }
+.card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.card h3 { margin: 0 0 6px; }
+.price { color: #d32f2f; font-weight: bold; }
+button {
+  margin-top: 8px;
+  width: 100%;
+  padding: 10px;
+}
+</style>
 </head>
 
 <body>
-  <h2>🛒 我要下單</h2>
-  <div id="list"></div>
+<h2>🛒 開團商品</h2>
+<div id="list">載入中…</div>
 
 <script>
-let userId = "";
-
 async function init() {
   await liff.init({ liffId: "2008857998-imqg5sNq" });
-  if (!liff.isLoggedIn()) liff.login();
-
-  const profile = await liff.getProfile();
-  userId = profile.userId;
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
 
   loadProducts();
 }
 
 async function loadProducts() {
-  const res = await fetch("/api/admin/products/open");
+  const res = await fetch("/api/products");
   const products = await res.json();
 
-  const box = document.getElementById("list");
-  box.innerHTML = "";
+  const list = document.getElementById("list");
+  list.innerHTML = "";
 
-  products.forEach(p => {
-    const sizes = p.sizes || [];
-    const colors = p.colors || [];
-
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <b>${p.name}</b><br/>
-      價格：$${p.price}
-
-      <select id="size-${p.code}">
-        ${sizes.map(s => `<option>${s}</option>`).join("")}
-      </select>
-
-      <select id="color-${p.code}">
-        ${colors.map(c => `<option>${c}</option>`).join("")}
-      </select>
-
-      <input id="qty-${p.code}" type="number" value="1" min="1" />
-
-      <button onclick="order('${p.code}', ${p.price})">
-        下單
-      </button>
-    `;
-
-    box.appendChild(div);
-  });
+  products
+    .filter(p => p.active === "TRUE")
+    .forEach(p => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <h3>${p.productName}</h3>
+        <div class="price">NT$ ${p.price}</div>
+        <button onclick="openDetail('${p.productCode}')">
+          查看商品 / 下單
+        </button>
+      `;
+      list.appendChild(div);
+    });
 }
 
-async function order(code, price) {
-  const body = {
-    userId,
-    productCode: code,
-    size: document.getElementById(`size-${code}`).value,
-    color: document.getElementById(`color-${code}`).value,
-    qty: Number(document.getElementById(`qty-${code}`).value),
-    price
-  };
-
-  const res = await fetch("/api/order/create", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
+function openDetail(productCode) {
+  liff.openWindow({
+    url: `https://你的網域/liff/liff-product-detail.html?productCode=${productCode}`,
+    external: false
   });
-
-  if (res.ok) {
-    alert("下單成功");
-  } else {
-    alert("下單失敗");
-  }
 }
 
 init();

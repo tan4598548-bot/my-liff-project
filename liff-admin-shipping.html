@@ -14,12 +14,14 @@
 <script>
 let userId = "";
 let orders = [];
+let adminUserId = null; // 🔴 新增：全域儲存 admin userId
 
 async function init() {
   await liff.init({ liffId: "2008857998-HUEXLkgO" });
   if (!liff.isLoggedIn()) {
     liff.login();
     return;
+  adminUserId = liff.getContext().userId; // 🔴 新增  
   }
 
   const profile = await liff.getProfile();
@@ -52,7 +54,9 @@ async function ship() {
 
   const res = await fetch("/api/admin/ship", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+  "x-line-userid": adminUserId // 🔴 新增：adminAuth 需要    
+     },
     body: JSON.stringify({ userId, orderIds: ids })
   });
 

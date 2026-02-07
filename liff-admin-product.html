@@ -71,9 +71,12 @@
   </div>
 
 <script>
+  let adminUserId = null; // 🔴 新增：全域儲存 admin userId
+
 async function init() {
   await liff.init({ liffId: "2008857998-AoqmEajq" });
   if (!liff.isLoggedIn()) liff.login();
+  adminUserId = liff.getContext().userId; // 🔴 新增
 }
 
 async function submitProduct() {
@@ -92,7 +95,9 @@ async function submitProduct() {
 
   const res = await fetch("/api/admin/products/create", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json",
+     "x-line-userid": adminUserId // 🔴 新增：adminAuth 需要  
+     },
     body: JSON.stringify(body)
   });
 
